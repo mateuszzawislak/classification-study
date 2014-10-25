@@ -75,13 +75,14 @@ randomWalk <- function(splittedData, selNum, className, param, method) {
   classIndex = getColumnIndex(data = trainData, className)
   mask = randomMask(colNum = ncol(trainData), classIndex, selNum = selNum)
   
-  best = -1
+  best = 0
+  bestMask = mask
   for(i in 1:param) {
-    maskedData = applyMaskOnData(mask, splittedData, classIndex)
-    accuracyRate = rateClassifier(method = method, splittedData = maskedData, className = className)
+    accuracyRate = rateClassifierWithMask(method, mask, splittedData, classIndex, className)
     
     if (accuracyRate > best){
-      best=accuracyRate
+      best = accuracyRate
+      bestMask = mask
     }
     
     neighbors = getNeighbors(ncol(trainData), getColumnIndex(data = trainData, className), mask)
@@ -89,7 +90,41 @@ randomWalk <- function(splittedData, selNum, className, param, method) {
       mask = selectRandom(neighbors)
   }
   
-  best
+  rateClassifierWithMask(method, bestMask, splittedData, classIndex, className)
+}
+
+hillClimbing <- function(splittedData, selNum, className, param, method) {
+  trainData = splittedData$training
+  classIndex = getColumnIndex(data = trainData, className)
+  mask = randomMask(colNum = ncol(trainData), classIndex, selNum = selNum)
+  
+  best = 0
+  bestMask = mask
+  for(i in 1:param) {
+    neighbors = getNeighbors(ncol(trainData), getColumnIndex(data = trainData, className), mask)
+    
+    if(length(neighbors) > 0) {
+      currBest = -1
+      currBestMask = NULL
+      
+      for(j in ncol(neighbors)) {
+        neighbor = neighbors[j]
+        accuracyRate = rateClassifierWithMask(method, neighbor, splittedData, classIndex, className)
+        
+        if (accuracyRate > currBest){
+          currBest = accuracyRate
+          currBestMask = neighbor
+        }
+      }
+      
+      if (currBest > best){
+        best = currBest
+        bestMask = currBestMask
+      }
+    }
+  }
+  
+  rateClassifierWithMask(method, bestMask,splittedData, classIndex, className)
 }
 
 # classification algorithms
@@ -122,6 +157,11 @@ rateClassifier <- function(method, splittedData, className) {
   all <- nrow(splittedData$test)
   
   correct/all
+}
+
+rateClassifierWithMask <- function(method, mask, splittedData, classIndex, className) {
+  maskedData = applyMaskOnData(mask, splittedData, classIndex)
+  rateClassifier(method = method, splittedData = maskedData, className = className)
 }
 
 # function studying selection methom on indicated data
@@ -164,4 +204,7 @@ main <- function() {
   
   print("Random Walk")
   studySelectionMethod(data, randomWalk, param = c(5))
+  
+  print("Hill climbing")
+  studySelectionMethod(data, hillClimbing, param = c(5))
 }
