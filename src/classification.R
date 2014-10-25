@@ -128,15 +128,17 @@ rateClassifier <- function(method, splittedData, className) {
 study <- function(data, selectMethod, param, method) {
   className = getColumnName(data$data, data$classIndex)
   splittedData <- splitData(data = data$data, percent = trainPercent)
+  trainAttrNum = 1:(ncol(data$data)-1);
   
   accuracyRate = c()
-  for(i in 1:(ncol(data$data)-1)) {
+  for(i in trainAttrNum) {
     quality = selectMethod(splittedData, i, className, param, method)
     
     accuracyRate = append(accuracyRate, quality)
   }
   
   print(accuracyRate)
+  plot(trainAttrNum,accuracyRate, type = "p", col = "red", xlab = "number of training attributes", ylab = "accuracy rate")
 }
 
 studySelectionMethod <- function(data, method, param) {
