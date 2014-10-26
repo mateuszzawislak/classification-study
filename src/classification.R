@@ -115,6 +115,60 @@ hillClimbing <- function(splittedData, selNum, className, param, method) {
   bestRate
 }
 
+# params:
+# - L
+# - repetitionNumber
+# - initTemp
+# - tempChange
+# - minTemp
+simulatedAnnealing <- function(splittedData, selNum, className, params, method) {
+  trainData = splittedData$training
+  classIndex = getColumnIndex(data = trainData, className)
+  
+  # generate init result
+  mask = randomMask(colNum = ncol(trainData), classCol = classIndex, selNum = selNum)
+  bestRate = rateClassifierWithMask(method, mask, splittedData, classIndex, className)
+  currRate = bestRate
+  
+  # simulated annealing params
+  temp = params$initTemp
+  repetition = 0
+  
+  for(iter in 1:(params$repetitionNumber)) {
+    for(i in 1:(params$L)) {
+      neighbors = getNeighbors(ncol(trainData), classIndex, mask)
+      if(length(neighbors) > 0) {
+        neighbor = selectRandom(neighbors)
+        
+        neighborRate = rateClassifierWithMask(method, neighbor, splittedData, classIndex, className)
+        delta = neighborRate - currRate
+        if(delta < 0) {
+          mask = neighbor
+          currRate = neighborRate
+          
+          if(neighborRate > bestRate) {
+            bestRate = neighborRate
+          }
+        } else {
+          x = runif(1, 0.0, 1.0)
+          if(x < exp((0-delta)/temp)) {
+            mask = neighbor
+            currRate = neighborRate
+          }
+        }
+      }
+    }
+    
+    temp = temp * params$tempChange
+    
+    if(temp <= params$minTemp) {
+      break
+    }
+  }
+  
+  bestRate
+}
+
 # classification algorithms
 kNN <- function(colIndex, splittedData) {
   className = getColumnName(data = splittedData$training, index = colIndex)
@@ -198,4 +252,7 @@ main <- function() {
   
   print("Hill climbing")
   studySelectionMethod(data, hillClimbing, param = c(5))
+  
+  print("Simulated Annealing")
+  studySelectionMethod(data, simulatedAnnealing, param = list("L" = 10, "minTemp" = 30, "repetitionNumber" = 100, "initTemp" = 100, "tempChange" = 0.90))
 }
