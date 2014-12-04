@@ -254,5 +254,5 @@ main <- function() {
   studySelectionMethod(data, hillClimbing, param = c(5))
   
   print("Simulated Annealing")
-  studySelectionMethod(data, simulatedAnnealing, param = list("L" = 10, "minTemp" = 30, "repetitionNumber" = 100, "initTemp" = 100, "tempChange" = 0.90))
+  #studySelectionMethod(data, simulatedAnnealing, param = list("L" = 10, "minTemp" = 30, "repetitionNumber" = 100, "initTemp" = 100, "tempChange" = 0.90))
 }
