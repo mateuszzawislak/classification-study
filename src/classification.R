@@ -8,10 +8,14 @@
 library(RWeka)
 library(e1071)
 
-# devides data into two parts:
-# - training set
-# - test set
 SplitData <- function(data, percent) {
+  # Args:
+  #   data: Data which should be devided
+  #   precent: Precent of training data set
+  #
+  # Returns:
+  #   Devided data into two parts: training set and test set 
+  
   # calculate columns count
   columns.count <- floor(nrow(data) * percent / 100)
   # get data random indexes
@@ -25,37 +29,77 @@ SplitData <- function(data, percent) {
 }
 
 GetColumnIndex <- function(data, column.name) {
+  # Args:
+  #   data: Data
+  #   column.name: Column name
+  #
+  # Returns:
+  #   Column index for the give column name
+  
   match(column.name, colnames(data))
 }
 
 GetColumnName <- function(data, index) {
+  # Args:
+  #   data: Data
+  #   index: Column index
+  #
+  # Returns:
+  #   Column name for the give column index
+  
   colnames(data)[index]
 }
 
-# returns random neighbor
-SelectRandom = function(neighbors){
+SelectRandom = function(neighbors) {
+  # Args:
+  #   neighbors: Set of neighbors
+  #
+  # Returns:
+  #   Random neighbor from the given set of neighbors
+  
   rand = sample(1:ncol(neighbors), 1)
   neighbors[, rand]
 }
 
-# generates random mask
 RandomMask <- function(col.num, class.col, sel.num) {
+  # Args:
+  #   col.num: Number of data columns
+  #   class.col: Class column name
+  #   sel.num: Size of the mask
+  #
+  # Returns:
+  #   Generates random mask
+  
   vector <- 1:col.num
   random.columns <- sample(vector[-class.col], sel.num, replace=F)
   
   sort(random.columns)
 }
 
-# applies mask on data
 ApplyMaskOnData <- function(mask, splitted.data, class.index) {
+  # Args:
+  #   mask: Data mask
+  #   splitted.data: Data
+  #   class.index: Class attribute column index
+  #
+  # Returns:
+  #   Filtered data
+  
   mask <- append(mask, class.index)
   masked.data <- list(training = splitted.data$training[, mask], test = splitted.data$test[, mask])
   
   masked.data
 }
 
-# returns mask's neighbors
 GetNeighbors <- function(col.num, class.col, mask) {
+  # Args:
+  #   col.num: Number of data attributes
+  #   class.col: Class attribute column name
+  #   mask: Data mask
+  #
+  # Returns:
+  #   Mask's neighbors
+  
   all.columns <- seq(from = 1, to = col.num)
   left.columns <- all.columns[-mask]
   left.columns <- left.columns[left.columns != class.col]
@@ -77,7 +121,20 @@ GetNeighbors <- function(col.num, class.col, mask) {
 }
 
 # selection methods
+
 RandomWalk <- function(splitted.data, sel.num, class.name, param, method) {
+  # Random walk as an attribute selection method.
+  #
+  # Args:
+  #   splitted.data: Data devided into two parts: training and test
+  #   sel.num: Number of attributes which should be selected
+  #   class.name: Class attribute column name
+  #   param: Number of iterations
+  #   method: Classification algorithm
+  #
+  # Returns:
+  #   The best model's quality
+  
   train.data <- splitted.data$training
   class.index <- GetColumnIndex(data = train.data, class.name)
   mask <- RandomMask(col.num = ncol(train.data), class.col = class.index, sel.num = sel.num)
@@ -100,6 +157,18 @@ RandomWalk <- function(splitted.data, sel.num, class.name, param, method) {
 }
 
 HillClimbing <- function(splitted.data, sel.num, class.name, param, method) {
+  # Hill climbing as an attribute selection method.
+  #
+  # Args:
+  #   splitted.data: Data devided into two parts: training and test
+  #   sel.num: Number of attributes which should be selected
+  #   class.name: Class attribute column name
+  #   param: Number of iterations
+  #   method: Classification algorithm
+  #
+  # Returns:
+  #   The best model's quality
+  
   train.data <- splitted.data$training
   class.index <- GetColumnIndex(data = train.data, class.name)
   mask <- RandomMask(col.num = ncol(train.data), class.col = class.index, sel.num = sel.num)
@@ -122,13 +191,26 @@ HillClimbing <- function(splitted.data, sel.num, class.name, param, method) {
   best.rate
 }
 
-# params:
-# - L
-# - repetition.number
-# - init.temp
-# - temp.change
-# - min.temp
+
 SimulatedAnnealing <- function(splitted.data, sel.num, class.name, params, method) {
+  # Simulated Annealing as an attribute selection method.
+  # Algorithm parameters:
+  #   L: The length of the period
+  #   repetition.number: Number of iterations
+  #   init.temp: Initial temperature
+  #   temp.change: Temperature change size
+  #   min.temp: Minimal temperature
+  #
+  # Args:
+  #   splitted.data: Data devided into two parts: training and test
+  #   sel.num: Number of attributes which should be selected
+  #   class.name: Class attribute column name
+  #   param: Algorithm parameters
+  #   method: Classification algorithm
+  #
+  # Returns:
+  #   The best model's quality
+  
   train.data <- splitted.data$training
   class.index <- GetColumnIndex(data = train.data, class.name)
   
@@ -177,7 +259,17 @@ SimulatedAnnealing <- function(splitted.data, sel.num, class.name, params, metho
 }
 
 # classification algorithms
+
 kNN <- function(col.index, splitted.data) {
+  # K nearest neighbours algorithm
+  #
+  # Args:
+  #   col.index: Class attribute column index
+  #   splitted.data: Data devided into two parts: training and test
+  #
+  # Returns:
+  #   Classification model
+  
   class.name <- GetColumnName(data = splitted.data$training, index = col.index)
   formul <- as.formula(paste(class.name,"~."))
   
@@ -185,6 +277,15 @@ kNN <- function(col.index, splitted.data) {
 }
 
 SVM <- function(col.index, splitted.data) {
+  # Support vector machine algorithm
+  #
+  # Args:
+  #   col.index: Class attribute column index
+  #   splitted.data: Data devided into two parts: training and test
+  #
+  # Returns:
+  #   Classification model
+  
   class.name <- GetColumnName(data = splitted.data$training, index = col.index)
   formul <- as.formula(paste(class.name,"~."))
   
@@ -192,11 +293,31 @@ SVM <- function(col.index, splitted.data) {
 }
 
 NB <- function(col.index, splitted.data) {
+  # Naive Bayes classifier algorithm
+  #
+  # Args:
+  #   col.index: Class attribute column index
+  #   splitted.data: Data devided into two parts: training and test
+  #
+  # Returns:
+  #   Classification model
+  
   naiveBayes(splitted.data$training[, -col.index], splitted.data$training[, col.index])
 }
 
 # Study functions
+
 RateClassifier <- function(method, splitted.data, class.name) {
+  # Evaluates classification model
+  #
+  # Args:
+  #   method: Classification algorithm
+  #   splitted.data: Data devided into two parts: training and test
+  #   class.name: class attribute column name
+  #
+  # Returns:
+  #   Classification model quality
+  
   col.index <- GetColumnIndex(data = splitted.data$training, column.name = class.name)
   
   classifier <- method(col.index, splitted.data = splitted.data)
@@ -209,12 +330,25 @@ RateClassifier <- function(method, splitted.data, class.name) {
 }
 
 RateClassifierWithMask <- function(method, mask, splitted.data, class.index, class.name) {
+  # Evaluates classification algorithm on masked data
+  #
+  # Returns:
+  #   Classification model quality
+  
   maskedData <- ApplyMaskOnData(mask, splitted.data, class.index)
   RateClassifier(method = method, splitted.data = maskedData, class.name = class.name)
 }
 
-# function Studying selection method on indicated data and classifiaction method
 Study <- function(data, select.method, param, method) {
+  # Function studies selection method on indicated data and classifiaction method.
+  # Method draws results' plot.
+  #
+  # Args:
+  #   data: Data
+  #   select.method: Attributes selection method
+  #   param: Attributes selection method's parameters
+  #   method: Classification algorithm
+  
   class.name <- GetColumnName(data$data, data$class.index)
   splitted.data <- SplitData(data = data$data, percent = kTrainPercent)
   trainAttrNum <- 1:(ncol(data$data)-1);
@@ -235,6 +369,13 @@ Study <- function(data, select.method, param, method) {
 }
 
 StudySelectionMethod <- function(data, method, param) {
+  # Studies attributes selection method for selected classification algorithms.
+  #
+  # Args:
+  #   data: Data
+  #   method: Attributes selection algorithm
+  #   param: Attributes selection method's parameters
+  
   print("Support Vector Machines")
   Study(data, method, param, SVM)
   
@@ -245,7 +386,7 @@ StudySelectionMethod <- function(data, method, param) {
   Study(data, method, param, kNN)
 }
 
-# const
+# constant values
 kTrainPercent <- 80
 kSelectionRepeatCount <- 10
   
