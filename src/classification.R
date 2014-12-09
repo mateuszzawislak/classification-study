@@ -1,6 +1,6 @@
 # MOW project
 #
-# classification study
+# Classification Study
 #
 # author: Mateusz Zawiœlak
 #
@@ -8,60 +8,67 @@
 library(RWeka)
 library(e1071)
 
-splitData <- function(data, percent) {
+# devides data into two parts:
+# - training set
+# - test set
+SplitData <- function(data, percent) {
   # calculate columns count
-  columnsCount <- floor(nrow(data) * percent / 100)
+  columns.count <- floor(nrow(data) * percent / 100)
   # get data random indexes
-  randomIndexes <- sample(seq(1,nrow(data)),columnsCount, replace=FALSE)
+  random.indexes <- sample(seq(1, nrow(data)), columns.count, replace=FALSE)
   
   # select data
-  trainset <- data[randomIndexes,]
-  testset <- data[-randomIndexes,]
+  train.set <- data[random.indexes, ]
+  test.set <- data[-random.indexes, ]
   
-  list(test = testset, training = trainset)
+  list(test = test.set, training = train.set)
 }
 
-getColumnIndex <- function(data, columnName) {
-  match(columnName, colnames(data))
+GetColumnIndex <- function(data, column.name) {
+  match(column.name, colnames(data))
 }
 
-getColumnName <- function(data, index) {
+GetColumnName <- function(data, index) {
   colnames(data)[index]
 }
 
-selectRandom = function(neighbors){
-  rand = sample(1:ncol(neighbors),1)
-  neighbors[,rand]
+# returns random neighbor
+SelectRandom = function(neighbors){
+  rand = sample(1:ncol(neighbors), 1)
+  neighbors[, rand]
 }
 
-randomMask <- function(colNum, classCol, selNum) {
-  vector = 1:colNum
-  randomColumns = sample(vector[-classCol], selNum, replace=F)
+# generates random mask
+RandomMask <- function(col.num, class.col, sel.num) {
+  vector <- 1:col.num
+  random.columns <- sample(vector[-class.col], sel.num, replace=F)
   
-  sort(randomColumns)
+  sort(random.columns)
 }
 
-applyMaskOnData <- function(mask, splittedData, classIndex) {
-  mask = append(mask, classIndex)
-  maskedData = list(training = splittedData$training[,mask], test = splittedData$test[,mask])
+# applies mask on data
+ApplyMaskOnData <- function(mask, splitted.data, class.index) {
+  mask <- append(mask, class.index)
+  masked.data <- list(training = splitted.data$training[, mask], test = splitted.data$test[, mask])
   
-  maskedData
+  masked.data
 }
 
-getNeighbors <- function(colNum, classCol, mask) {
-  allColumns = seq(from = 1, to = colNum)
-  leftColumns = allColumns[-mask]
-  leftColumns = leftColumns[leftColumns!=classCol]
+# returns mask's neighbors
+GetNeighbors <- function(col.num, class.col, mask) {
+  all.columns <- seq(from = 1, to = col.num)
+  left.columns <- all.columns[-mask]
+  left.columns <- left.columns[left.columns != class.col]
   
-  neighbors = array(0, c(length(mask), length(leftColumns)*length(mask)))
+  neighbors <- array(0, c(length(mask), length(left.columns)*length(mask)))
   
-  if(length(leftColumns) > 0) {
-    for(i in 1:length(leftColumns)) {
+  if (length(left.columns) > 0) {
+    for(i in 1:length(left.columns)) {
       for(j in 1:length(mask)) {
-        neighbor = mask
-        neighbor[j] = leftColumns[i]
+        neighbor <- mask
+        neighbor[j] <- left.columns[i]
         
-        neighbors[,(i-1)*length(mask)+j] = sort(neighbor)
+        neighbors[, (i-1)*length(mask)+j] <- sort(neighbor)
       }
     }
   }
@@ -70,189 +77,189 @@ getNeighbors <- function(colNum, classCol, mask) {
 }
 
 # selection methods
-randomWalk <- function(splittedData, selNum, className, param, method) {
-  trainData = splittedData$training
-  classIndex = getColumnIndex(data = trainData, className)
-  mask = randomMask(colNum = ncol(trainData), classCol = classIndex, selNum = selNum)
+RandomWalk <- function(splitted.data, sel.num, class.name, param, method) {
+  train.data <- splitted.data$training
+  class.index <- GetColumnIndex(data = train.data, class.name)
+  mask <- RandomMask(col.num = ncol(train.data), class.col = class.index, sel.num = sel.num)
   
-  bestRate = rateClassifierWithMask(method, mask, splittedData, classIndex, className)
+  best.rate <- RateClassifierWithMask(method, mask, splitted.data, class.index, class.name)
   for(i in 1:param) {
-    neighbors = getNeighbors(ncol(trainData), classIndex, mask)
-    if(length(neighbors) > 0) {
-      mask = selectRandom(neighbors)
+    neighbors <- GetNeighbors(ncol(train.data), class.index, mask)
+    if (length(neighbors) > 0) {
+      mask <- SelectRandom(neighbors)
       
-      accuracyRate = rateClassifierWithMask(method, mask, splittedData, classIndex, className)
+      accuracy.rate <- RateClassifierWithMask(method, mask, splitted.data, class.index, class.name)
       
-      if (accuracyRate > bestRate){
-        bestRate = accuracyRate
+      if (accuracy.rate > best.rate){
+        best.rate <- accuracy.rate
       }
     }
   }
   
-  bestRate
+  best.rate
 }
 
-hillClimbing <- function(splittedData, selNum, className, param, method) {
-  trainData = splittedData$training
-  classIndex = getColumnIndex(data = trainData, className)
-  mask = randomMask(colNum = ncol(trainData), classCol = classIndex, selNum = selNum)
+HillClimbing <- function(splitted.data, sel.num, class.name, param, method) {
+  train.data <- splitted.data$training
+  class.index <- GetColumnIndex(data = train.data, class.name)
+  mask <- RandomMask(col.num = ncol(train.data), class.col = class.index, sel.num = sel.num)
   
-  bestRate = rateClassifierWithMask(method, mask, splittedData, classIndex, className)
+  best.rate = RateClassifierWithMask(method, mask, splitted.data, class.index, class.name)
   for(i in 1:param) {
-    neighbors = getNeighbors(ncol(trainData), classIndex, mask)
-    if(length(neighbors) > 0) {
-      randMask = selectRandom(neighbors)
+    neighbors <- GetNeighbors(ncol(train.data), class.index, mask)
+    if (length(neighbors) > 0) {
+      rand.mask <- SelectRandom(neighbors)
       
-      accuracyRate = rateClassifierWithMask(method, randMask, splittedData, classIndex, className)
+      accuracy.rate <- RateClassifierWithMask(method, rand.mask, splitted.data, class.index, class.name)
       
-      if(accuracyRate > bestRate){
-        bestRate = accuracyRate
-        mask = randMask
+      if (accuracy.rate > best.rate){
+        best.rate <- accuracy.rate
+        mask <- rand.mask
       }
     }
   }
   
-  bestRate
+  best.rate
 }
 
 # params:
 # - L
-# - repetitionNumber
-# - initTemp
-# - tempChange
-# - minTemp
-simulatedAnnealing <- function(splittedData, selNum, className, params, method) {
-  trainData = splittedData$training
-  classIndex = getColumnIndex(data = trainData, className)
+# - repetition.number
+# - init.temp
+# - temp.change
+# - min.temp
+SimulatedAnnealing <- function(splitted.data, sel.num, class.name, params, method) {
+  train.data <- splitted.data$training
+  class.index <- GetColumnIndex(data = train.data, class.name)
   
   # generate init result
-  mask = randomMask(colNum = ncol(trainData), classCol = classIndex, selNum = selNum)
-  bestRate = rateClassifierWithMask(method, mask, splittedData, classIndex, className)
-  currRate = bestRate
+  mask <- RandomMask(col.num = ncol(train.data), class.col = class.index, sel.num = sel.num)
+  best.rate <- RateClassifierWithMask(method, mask, splitted.data, class.index, class.name)
+  curr.rate <- best.rate
   
   # simulated annealing params
-  temp = params$initTemp
-  repetition = 0
+  temp <- params$init.temp
+  repetition <- 0
   
-  for(iter in 1:(params$repetitionNumber)) {
+  for(iter in 1:(params$repetition.number)) {
     for(i in 1:(params$L)) {
-      neighbors = getNeighbors(ncol(trainData), classIndex, mask)
-      if(length(neighbors) > 0) {
-        neighbor = selectRandom(neighbors)
+      neighbors <- GetNeighbors(ncol(train.data), class.index, mask)
+      if (length(neighbors) > 0) {
+        neighbor <- SelectRandom(neighbors)
         
-        neighborRate = rateClassifierWithMask(method, neighbor, splittedData, classIndex, className)
-        delta = neighborRate - currRate
-        if(delta < 0) {
-          mask = neighbor
-          currRate = neighborRate
+        neighbor.rate <- RateClassifierWithMask(method, neighbor, splitted.data, class.index, class.name)
+        delta <- neighbor.rate - curr.rate
+        if (delta < 0) {
+          mask <- neighbor
+          curr.rate <- neighbor.rate
           
-          if(neighborRate > bestRate) {
-            bestRate = neighborRate
+          if (neighbor.rate > best.rate) {
+            best.rate <- neighbor.rate
           }
         } else {
-          x = runif(1, 0.0, 1.0)
-          if(x < exp((0-delta)/temp)) {
-            mask = neighbor
-            currRate = neighborRate
+          x <- runif (1, 0.0, 1.0)
+          if (x < exp((0-delta)/temp)) {
+            mask <- neighbor
+            curr.rate <- neighbor.rate
           }
         }
       }
     }
     
-    temp = temp * params$tempChange
+    temp <- temp * params$temp.change
     
-    if(temp <= params$minTemp) {
+    if (temp <= params$min.temp) {
       break
     }
   }
   
-  bestRate
+  best.rate
 }
 
 # classification algorithms
-kNN <- function(colIndex, splittedData) {
-  className = getColumnName(data = splittedData$training, index = colIndex)
-  formul = as.formula(paste(className,"~."))
+kNN <- function(col.index, splitted.data) {
+  class.name <- GetColumnName(data = splitted.data$training, index = col.index)
+  formul <- as.formula(paste(class.name,"~."))
   
-  IBk(formul, data = splittedData$training)
+  IBk(formul, data = splitted.data$training)
 }
 
-SVM <- function(colIndex, splittedData) {
-  className = getColumnName(data = splittedData$training, index = colIndex)
-  formul = as.formula(paste(className,"~."))
+SVM <- function(col.index, splitted.data) {
+  class.name <- GetColumnName(data = splitted.data$training, index = col.index)
+  formul <- as.formula(paste(class.name,"~."))
   
-  svm(formul, data = splittedData$training)
+  svm(formul, data = splitted.data$training)
 }
 
-NB <- function(colIndex, splittedData) {
-  naiveBayes(splittedData$training[,-colIndex], splittedData$training[,colIndex])
+NB <- function(col.index, splitted.data) {
+  naiveBayes(splitted.data$training[, -col.index], splitted.data$training[, col.index])
 }
 
-# study functions
-rateClassifier <- function(method, splittedData, className) {
-  colIndex <- getColumnIndex(data = splittedData$training, columnName = className)
+# Study functions
+RateClassifier <- function(method, splitted.data, class.name) {
+  col.index <- GetColumnIndex(data = splitted.data$training, column.name = class.name)
   
-  classifier <- method(colIndex, splittedData = splittedData)
-  prediction <- predict(classifier, splittedData$test)
+  classifier <- method(col.index, splitted.data = splitted.data)
+  prediction <- predict(classifier, splitted.data$test)
   
-  correct <- sum(splittedData$test[,colIndex] == prediction)
-  all <- nrow(splittedData$test)
+  correct <- sum(splitted.data$test[, col.index] == prediction)
+  all <- nrow(splitted.data$test)
   
   correct/all
 }
 
-rateClassifierWithMask <- function(method, mask, splittedData, classIndex, className) {
-  maskedData = applyMaskOnData(mask, splittedData, classIndex)
-  rateClassifier(method = method, splittedData = maskedData, className = className)
+RateClassifierWithMask <- function(method, mask, splitted.data, class.index, class.name) {
+  maskedData <- ApplyMaskOnData(mask, splitted.data, class.index)
+  RateClassifier(method = method, splitted.data = maskedData, class.name = class.name)
 }
 
-# function studying selection method on indicated data and classifiaction method
-study <- function(data, selectMethod, param, method) {
-  className = getColumnName(data$data, data$classIndex)
-  splittedData <- splitData(data = data$data, percent = trainPercent)
-  trainAttrNum = 1:(ncol(data$data)-1);
+# function Studying selection method on indicated data and classifiaction method
+Study <- function(data, select.method, param, method) {
+  class.name <- GetColumnName(data$data, data$class.index)
+  splitted.data <- SplitData(data = data$data, percent = kTrainPercent)
+  trainAttrNum <- 1:(ncol(data$data)-1);
   
-  accuracyRate = c()
+  accuracy.rate <- c()
   for(i in trainAttrNum) {
-    qualityResults = double(length = selectionRepeatCount)
-    for(j in 1:selectionRepeatCount) {
-      quality = selectMethod(splittedData, i, className, param, method)
-      qualityResults[j] = as.numeric(quality)
+    qualityResults <- double(length = kSelectionRepeatCount)
+    for(j in 1:kSelectionRepeatCount) {
+      quality <- select.method(splitted.data, i, class.name, param, method)
+      qualityResults[j] <- as.numeric(quality)
     }
     
-    accuracyRate = append(accuracyRate, sum(qualityResults)/selectionRepeatCount)
+    accuracy.rate <- append(accuracy.rate, sum(qualityResults)/kSelectionRepeatCount)
   }
   
-  print(accuracyRate)
-  plot(trainAttrNum,accuracyRate, type = "p", col = "red", xlab = "number of training attributes", ylab = "accuracy rate")
+  print(accuracy.rate)
+  plot(trainAttrNum,accuracy.rate, type = "p", col = "red", xlab = "number of training attributes", ylab = "accuracy rate")
 }
 
-studySelectionMethod <- function(data, method, param) {
+StudySelectionMethod <- function(data, method, param) {
   print("Support Vector Machines")
-  study(data, method, param, SVM)
+  Study(data, method, param, SVM)
   
   print("Naive Bayes")
-  study(data, method, param, NB)
+  Study(data, method, param, NB)
   
   print("k-Nearest Neighbors")
-  study(data, method, param, kNN)
+  Study(data, method, param, kNN)
 }
 
 # const
-trainPercent <- 80
-selectionRepeatCount <- 10
+kTrainPercent <- 80
+kSelectionRepeatCount <- 10
   
 # main
 main <- function() {
-  uciData <- read.csv(file="D:/Github/classification-study/data/wine.data", head=FALSE, sep=",")
-  data = list("data" = uciData, "classIndex" = 1)
+  uci.data <- read.csv(file="D:/Github/classification-Study/data/wine.data", head=FALSE, sep=",")
+  data <- list("data" = uci.data, "class.index" = 1)
   
   print("Random Walk")
-  studySelectionMethod(data, randomWalk, param = c(5))
+  StudySelectionMethod(data, RandomWalk, param = c(5))
   
   print("Hill climbing")
-  studySelectionMethod(data, hillClimbing, param = c(5))
+  StudySelectionMethod(data, HillClimbing, param = c(5))
   
   print("Simulated Annealing")
-  #studySelectionMethod(data, simulatedAnnealing, param = list("L" = 10, "minTemp" = 30, "repetitionNumber" = 100, "initTemp" = 100, "tempChange" = 0.90))
+  StudySelectionMethod(data, SimulatedAnnealing, param = list("L" = 10, "min.temp" = 30, "repetition.number" = 100, "init.temp" = 100, "temp.change" = 0.90))
 }
